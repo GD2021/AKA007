@@ -195,34 +195,38 @@
             var vid = (url.match(/\/video\/([A-Z]+-\d+[A-Z]?)/i) || [])[1];
             if (!vid) return cb({ success: true, data: [] });
 
-            var t = new Date().getTime();
-            var sig = btoa(String(t));
-            var s = sig.length - 12;
-            sig = sig.substr(s, 10);
-            var sts = 1;
-            for (var i = 0; i < 10; i++) sts += sig.charCodeAt(i) * i * 1743;
+            var streams = [];
 
-            var apiUrl = BASE + '/hls/get_video_info.php?id=' + encodeURIComponent(vid) + '&sig=' + sig + '&sts=' + sts;
-            var res = await http_get(apiUrl, HEADERS);
-            var body = String(res && res.body || '');
-            var jsonStr = body.split('for (;;);')[1] || body;
-            var data;
-            try { data = JSON.parse(jsonStr); } catch (_) { data = null; }
+            var m3u8Direct = 'https://video10.memojav.net/stream/' + vid + '/master.m3u8';
+            streams.push(new StreamResult({ url: m3u8Direct, quality: '720p', type: 'hls', headers: HEADERS }));
 
-            if (data && data.success && data.url) {
-                var streamUrl = decodeURIComponent(data.url);
-                var streams = [];
-                if (data.type === 'hls' || /\.m3u8/i.test(streamUrl)) {
-                    streams.push(new StreamResult({ url: streamUrl, quality: '720p', type: 'hls', headers: HEADERS }));
-                } else {
-                    streams.push(new StreamResult({ url: streamUrl + '=m22', quality: '720p', type: 'mp4', headers: HEADERS }));
-                    streams.push(new StreamResult({ url: streamUrl + '=m37', quality: '1080p', type: 'mp4', headers: HEADERS }));
+            try {
+                var t = new Date().getTime();
+                var sig = btoa(String(t));
+                var s = sig.length - 12;
+                sig = sig.substr(s, 10);
+                var sts = 1;
+                for (var i = 0; i < 10; i++) sts += sig.charCodeAt(i) * i * 1743;
+
+                var apiUrl = BASE + '/hls/get_video_info.php?id=' + encodeURIComponent(vid) + '&sig=' + sig + '&sts=' + sts;
+                var res = await http_get(apiUrl, HEADERS);
+                var body = String(res && res.body || '');
+                var jsonStr = body.split('for (;;);')[1] || body;
+                var data;
+                try { data = JSON.parse(jsonStr); } catch (_) { data = null; }
+
+                if (data && data.success && data.url) {
+                    var streamUrl = decodeURIComponent(data.url);
+                    if (data.type === 'hls' || /\.m3u8/i.test(streamUrl)) {
+                        streams.push(new StreamResult({ url: streamUrl, quality: '1080p', type: 'hls', headers: HEADERS }));
+                    } else {
+                        streams.push(new StreamResult({ url: streamUrl + '=m22', quality: '720p', type: 'mp4', headers: HEADERS }));
+                        streams.push(new StreamResult({ url: streamUrl + '=m37', quality: '1080p', type: 'mp4', headers: HEADERS }));
+                    }
                 }
-                return cb({ success: true, data: streams });
-            }
+            } catch (_) {}
 
-            var fallback = 'https://video10.memojav.net/stream/' + vid + '/master.m3u8';
-            cb({ success: true, data: [new StreamResult({ url: fallback, quality: '720p', type: 'hls', headers: HEADERS })] });
+            cb({ success: true, data: streams });
         } catch (e) {
             cb({ success: false, errorCode: 'STREAM_ERROR', message: String(e && e.message || e) });
         }
