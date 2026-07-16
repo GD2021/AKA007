@@ -43,11 +43,12 @@
         const m = String(u).match(/\/vod\/play\/id\/(\d+)/);
         return m ? m[1] : (/^\d+$/.test(String(u).trim()) ? String(u).trim() : '');
     };
-    const fixUrl = (u) => {
+    const fixUrl = (u, base) => {
         if (!u) return '';
         if (u.startsWith('//')) return 'https:' + u;
         if (u.startsWith('http')) return u;
-        return '';
+        if (u.startsWith('/')) return (base || BASE).replace(/\/+$/, '') + u;
+        try { return new URL(u, base || BASE).href; } catch (_) { return ''; }
     };
 
     const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', nbsp: ' ', '#39': "'", apos: "'" };
@@ -154,15 +155,39 @@
         return [new StreamResult({ url: raw, quality: isHls ? 'Auto' : '720p', headers: HEADERS })];
     }
 
+    const EXTRACTOR_HOSTS = /mixdrop\.co|streamtape\.com|voe\.sx|filemoon|dood\.|hubcloud|rabbitstream|pixeldrain/i;
+
     async function resolveStreams(player) {
-        return buildStreams(player);
+        const direct = buildStreams(player);
+        if (direct.length) return direct;
+        const ext = player?.url || '';
+        if (ext && EXTRACTOR_HOSTS.test(ext) && typeof globalThis.loadExtractor === 'function') {
+            const out = [];
+            try {
+                await globalThis.loadExtractor(ext, (s) => {
+                    if (s && s.url) out.push(new StreamResult({
+                        url: s.url,
+                        quality: s.quality || 'Auto',
+                        headers: s.headers || HEADERS,
+                        ...(s.subtitles ? { subtitles: s.subtitles } : {})
+                    }));
+                });
+                if (out.length) return out;
+            } catch (_) {}
+        }
+        return [];
     }
 
     async function getHome(cb) {
         try {
             const sort = 'time_add';
             const requests = CATEGORIES.map((c) => ({ url: catPageUrl(c.tid, sort, 1), headers: HEADERS }));
-            const responses = await http_parallel(requests);
+            let responses;
+            try {
+                responses = await http_parallel(requests);
+            } catch (_) {
+                responses = await Promise.all(requests.map((r) => http_get(r.url, r.headers).catch(() => null)));
+            }
             const homes = await Promise.all(responses.map(async (res, i) => {
                 if (!res || res.status !== 200) return null;
                 const items = await parseList(String(res.body || ''));
