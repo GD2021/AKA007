@@ -116,7 +116,7 @@
     }
 
     async function fetchCategoryItems(cat) {
-        var pageItems = await Promise.all([1, 2, 3].map(async function (p) {
+        var pageItems = await Promise.all([1, 2, 3, 4, 5].map(async function (p) {
             try {
                 var url = getHost() + buildUrl(cat.id, p);
                 var html = await fetchPage(url);
@@ -127,8 +127,8 @@
         }));
         var seen = {};
         var merged = [];
-        for (var i = 0; i < pageItems.length && merged.length < 60; i++) {
-            for (var j = 0; j < pageItems[i].length && merged.length < 60; j++) {
+        for (var i = 0; i < pageItems.length && merged.length < 100; i++) {
+            for (var j = 0; j < pageItems[i].length && merged.length < 100; j++) {
                 var item = pageItems[i][j];
                 if (!seen[item.url]) {
                     seen[item.url] = true;
