@@ -1,5 +1,22 @@
 [
   {
+    "packageName": "com.ninetyonepinse.provider",
+    "name": "91PinSe",
+    "version": 1,
+    "baseUrl": "https://91pinse.com",
+    "description": "JAV video provider from 91PinSe",
+    "authors": [
+      "GD2021"
+    ],
+    "languages": [
+      "ja"
+    ],
+    "categories": [
+      "Movie"
+    ],
+    "url": "https://raw.githubusercontent.com/GD2021/AKA007/main/dist/com.ninetyonepinse.provider.sky"
+  },
+  {
     "packageName": "com.kanav.provider",
     "name": "Kanav",
     "version": 1,
