@@ -1,0 +1,13 @@
+{
+  "packageName": "com.memojav.provider",
+  "name": "MemoJav",
+  "version": 1,
+  "baseUrl": "https://memojav.com",
+  "description": "JAV video provider from MemoJav",
+  "authors": ["GD2021"],
+  "languages": ["ja"],
+  "categories": ["Movie"],
+  "domains": [
+    { "name": "memojav.com", "url": "https://memojav.com" }
+  ]
+}

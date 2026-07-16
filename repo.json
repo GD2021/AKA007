@@ -1,0 +1,9 @@
+{
+  "name": "MemoJav SkyStream Extension",
+  "packageName": "com.memojav.provider",
+  "description": "SkyStream plugin for MemoJav JAV provider",
+  "manifestVersion": 1,
+  "pluginLists": [
+    "https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/main/dist/plugins.json"
+  ]
+}
