@@ -1,7 +1,7 @@
 {
-  "name": "MemoJav SkyStream Extension",
-  "packageName": "com.memojav.provider",
-  "description": "MemoJav JAV video provider plugin for SkyStream",
+  "name": "AKA007 SkyStream Extensions",
+  "packageName": "com.aka007.repo",
+  "description": "JAV video provider collection for SkyStream",
   "manifestVersion": 1,
   "pluginLists": [
     "https://raw.githubusercontent.com/GD2021/AKA007/main/dist/plugins.json"
