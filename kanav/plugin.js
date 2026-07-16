@@ -178,10 +178,11 @@
         return [];
     }
 
-    async function getHome(cb) {
+    async function getHome(cb, page) {
         try {
             const sort = 'time_add';
-            const requests = CATEGORIES.map((c) => ({ url: catPageUrl(c.tid, sort, 1), headers: HEADERS }));
+            const pg = Math.max(1, parseInt(page, 10) || 1);
+            const requests = CATEGORIES.map((c) => ({ url: catPageUrl(c.tid, sort, pg), headers: HEADERS }));
             let responses;
             try {
                 responses = await http_parallel(requests);
@@ -201,11 +202,12 @@
         }
     }
 
-    async function search(query, cb) {
+    async function search(query, cb, page) {
         try {
             const q = String(query || '').trim();
             if (!q) return cb({ success: true, data: [] });
-            const res = await http_get(searchUrl(q, 'time_add', 1), HEADERS);
+            const pg = Math.max(1, parseInt(page, 10) || 1);
+            const res = await http_get(searchUrl(q, 'time_add', pg), HEADERS);
             if (!res || res.status !== 200) return cb({ success: true, data: [] });
             cb({ success: true, data: await parseList(String(res.body || '')) });
         } catch (e) {
