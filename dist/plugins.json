@@ -5,12 +5,21 @@
     "version": 1,
     "baseUrl": "https://memojav.com",
     "description": "JAV video provider from MemoJav",
-    "authors": ["GD2021"],
-    "languages": ["ja"],
-    "categories": ["Movie"],
-    "domains": [
-      { "name": "memojav.com", "url": "https://memojav.com" }
+    "authors": [
+      "GD2021"
     ],
-    "url": "https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/main/dist/com.memojav.provider.sky"
+    "languages": [
+      "ja"
+    ],
+    "categories": [
+      "Movie"
+    ],
+    "domains": [
+      {
+        "name": "memojav.com",
+        "url": "https://memojav.com"
+      }
+    ],
+    "url": "https://raw.githubusercontent.com/GD2021/AKA007/main/dist/com.memojav.provider.sky"
   }
 ]
