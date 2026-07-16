@@ -34,6 +34,23 @@
     "url": "https://raw.githubusercontent.com/GD2021/AKA007/main/dist/com.hsex.provider.sky"
   },
   {
+    "packageName": "com.jmtt.provider",
+    "name": "J片天堂",
+    "version": 1,
+    "baseUrl": "https://jptt.tv",
+    "description": "JAV video provider from JPTT",
+    "authors": [
+      "GD2021"
+    ],
+    "languages": [
+      "ja"
+    ],
+    "categories": [
+      "Movie"
+    ],
+    "url": "https://raw.githubusercontent.com/GD2021/AKA007/main/dist/com.jmtt.provider.sky"
+  },
+  {
     "packageName": "com.kanav.provider",
     "name": "Kanav",
     "version": 1,

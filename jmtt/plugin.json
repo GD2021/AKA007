@@ -1,0 +1,10 @@
+{
+    "packageName": "com.jmtt.provider",
+    "name": "J片天堂",
+    "version": 1,
+    "baseUrl": "https://jptt.tv",
+    "description": "JAV video provider from JPTT",
+    "authors": ["GD2021"],
+    "languages": ["ja"],
+    "categories": ["Movie"]
+}
