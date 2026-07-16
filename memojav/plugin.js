@@ -1,6 +1,8 @@
 (function () {
 
-    var HOST = manifest.baseUrl || 'https://memojav.com';
+    function getHost() {
+        try { return manifest.baseUrl || 'https://memojav.com'; } catch (_) { return 'https://memojav.com'; }
+    }
 
     function cleanText(html) {
         if (!html) return '';
@@ -13,7 +15,7 @@
         if (!url) return '';
         if (url.indexOf('//') === 0) return 'https:' + url;
         if (url.indexOf('http') === 0) return url;
-        return HOST + (url.indexOf('/') === 0 ? '' : '/') + url;
+        return getHost() + (url.indexOf('/') === 0 ? '' : '/') + url;
     }
 
     function isValidVideoId(vid) {
@@ -89,17 +91,17 @@
     async function fetchPage(url) {
         var res = await http_get(url, {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Referer': HOST + '/'
+            'Referer': getHost() + '/'
         }, 15000);
         return String(res.body || '');
     }
 
     async function fetchVideoInfo(videoId) {
         var sigData = generateSig();
-        var url = HOST + '/hls/get_video_info.php?id=' + encodeURIComponent(videoId) + '&sig=' + sigData.sig + '&sts=' + sigData.sts;
+        var url = getHost() + '/hls/get_video_info.php?id=' + encodeURIComponent(videoId) + '&sig=' + sigData.sig + '&sts=' + sigData.sts;
         var res = await http_get(url, {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Referer': HOST + '/'
+            'Referer': getHost() + '/'
         }, 15000);
         var body = String(res.body || '');
         var jsonStr = body.split('for (;;);')[1] || body;
@@ -120,7 +122,7 @@
             sections['Trending'] = [];
 
             try {
-                var bestHtml = await fetchPage(HOST + '/best/');
+                var bestHtml = await fetchPage(getHost() + '/best/');
                 var bestItems = parseList(bestHtml);
                 if (bestItems.length) {
                     sections['\u6700\u4F73'] = bestItems;
@@ -129,7 +131,7 @@
             } catch (_) {}
 
             try {
-                var videoHtml = await fetchPage(HOST + '/video/');
+                var videoHtml = await fetchPage(getHost() + '/video/');
                 var videoItems = parseList(videoHtml);
                 if (videoItems.length) sections['\u6700\u65B0'] = videoItems;
             } catch (_) {}
@@ -151,7 +153,7 @@
                 return cb({ success: false, errorCode: 'INVALID_ID', message: 'Invalid video ID: ' + vid });
             }
 
-            var html = await fetchPage(HOST + '/video/' + vid);
+            var html = await fetchPage(getHost() + '/video/' + vid);
             if (!html) {
                 return cb({ success: false, errorCode: 'NOT_FOUND', message: 'Detail page not found' });
             }
@@ -245,26 +247,26 @@
                             url: videoInfo.url,
                             quality: '1080p',
                             type: 'hls',
-                            headers: { 'Referer': HOST + '/' }
+                            headers: { 'Referer': getHost() + '/' }
                         }));
                     } else {
                         streams.push(new StreamResult({
                             url: videoInfo.url + '=m37',
                             quality: '1080p',
                             type: 'mp4',
-                            headers: { 'Referer': HOST + '/' }
+                            headers: { 'Referer': getHost() + '/' }
                         }));
                         streams.push(new StreamResult({
                             url: videoInfo.url + '=m22',
                             quality: '720p',
                             type: 'mp4',
-                            headers: { 'Referer': HOST + '/' }
+                            headers: { 'Referer': getHost() + '/' }
                         }));
                         streams.push(new StreamResult({
                             url: videoInfo.url + '=m18',
                             quality: '360p',
                             type: 'mp4',
-                            headers: { 'Referer': HOST + '/' }
+                            headers: { 'Referer': getHost() + '/' }
                         }));
                     }
                     return cb({ success: true, data: streams });
@@ -278,7 +280,7 @@
                         url: url,
                         quality: '720p',
                         type: /\.m3u8/i.test(url) ? 'hls' : 'mp4',
-                        headers: { 'Referer': HOST + '/' }
+                        headers: { 'Referer': getHost() + '/' }
                     })]
                 });
             }
