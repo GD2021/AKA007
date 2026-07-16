@@ -6,8 +6,5 @@
   "description": "JAV video provider from MemoJav",
   "authors": ["GD2021"],
   "languages": ["ja"],
-  "categories": ["Movie"],
-  "domains": [
-    { "name": "memojav.com", "url": "https://memojav.com" }
-  ]
+  "categories": ["Movie"]
 }

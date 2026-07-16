@@ -14,12 +14,6 @@
     "categories": [
       "Movie"
     ],
-    "domains": [
-      {
-        "name": "memojav.com",
-        "url": "https://memojav.com"
-      }
-    ],
     "url": "https://raw.githubusercontent.com/GD2021/AKA007/main/dist/com.memojav.provider.sky"
   }
 ]
