@@ -1,0 +1,10 @@
+{
+    "packageName": "com.hsex.provider",
+    "name": "HSex",
+    "version": 1,
+    "baseUrl": "https://hsex.tv",
+    "description": "JAV video provider from HSex",
+    "authors": ["GD2021"],
+    "languages": ["ja"],
+    "categories": ["Movie"]
+}

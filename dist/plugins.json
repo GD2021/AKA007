@@ -17,6 +17,23 @@
     "url": "https://raw.githubusercontent.com/GD2021/AKA007/main/dist/com.ninetyonepinse.provider.sky"
   },
   {
+    "packageName": "com.hsex.provider",
+    "name": "HSex",
+    "version": 1,
+    "baseUrl": "https://hsex.tv",
+    "description": "JAV video provider from HSex",
+    "authors": [
+      "GD2021"
+    ],
+    "languages": [
+      "ja"
+    ],
+    "categories": [
+      "Movie"
+    ],
+    "url": "https://raw.githubusercontent.com/GD2021/AKA007/main/dist/com.hsex.provider.sky"
+  },
+  {
     "packageName": "com.kanav.provider",
     "name": "Kanav",
     "version": 1,
