@@ -1,24 +1,6 @@
 (function () {
 
     var HOST = manifest.baseUrl || 'https://memojav.com';
-    var ITEM_LIMIT = 24;
-    var MAX_PAGE = 10;
-
-    var CLASSES = [
-        { type_id: 'best', type_name: '\u6700\u4F73' },
-        { type_id: 'video', type_name: '\u6700\u65B0' },
-        { type_id: 'categories/big-tits-lover', type_name: 'Big Tits Lover' },
-        { type_id: 'categories/big-tits', type_name: 'Big Tits' },
-        { type_id: 'categories/bodysuit', type_name: 'Bodysuit' },
-        { type_id: 'categories/mature-woman', type_name: 'Mature Woman' },
-        { type_id: 'categories/stepfamily', type_name: 'Stepfamily' },
-        { type_id: 'categories/outdoor', type_name: 'Outdoor' },
-        { type_id: 'categories/milf', type_name: 'MILF' },
-        { type_id: 'categories/documentary', type_name: 'Documentary' },
-    ];
-
-    var CLASS_MAP = {};
-    CLASSES.forEach(function (c) { CLASS_MAP[c.type_id] = c.type_name; });
 
     function cleanText(html) {
         if (!html) return '';
@@ -38,9 +20,16 @@
         return /^[A-Z]+-\d+[A-Z]?$/i.test(vid);
     }
 
-    function buildCategoryUrl(typeId, page) {
-        if (typeId === 'best') return page === 1 ? '/best/' : '/best/page-' + page;
-        return page === 1 ? '/' + typeId + '/' : '/' + typeId + '/page-' + page;
+    function generateSig() {
+        var t = new Date().getTime();
+        var sig = btoa(String(t));
+        var s = sig.length - 12;
+        sig = sig.substr(s, 10);
+        var sts = 1;
+        for (var i = 0; i < 10; i++) {
+            sts += sig.charCodeAt(i) * i * 1743;
+        }
+        return { sig: sig, sts: sts };
     }
 
     function parseList(html) {
@@ -48,10 +37,10 @@
         var result = [];
         var seen = {};
 
-        var itemRegex = /<a[^>]*class="[^"]*video-item[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+        var itemRegex = /<a[^>]*href="([^"]+)"[^>]*class="[^"]*video-item[^"]*"[^>]*>([\s\S]*?)<\/a>/gi;
         var match;
         while ((match = itemRegex.exec(html)) !== null) {
-            if (result.length >= ITEM_LIMIT) break;
+            if (result.length >= 24) break;
             var href = match[1];
             var inner = match[2];
             var vidMatch = href.match(/\/video\/([A-Z]+-\d+[A-Z]?)/i);
@@ -60,24 +49,14 @@
             if (seen[vodId]) continue;
             seen[vodId] = true;
 
-            var imgEl = inner.match(/<img[^>]*(?:data-original|data-src|src)="([^"]+)"[^>]*>/i);
+            var imgEl = inner.match(/<img[^>]*src="([^"]+)"[^>]*>/i);
             var pic = imgEl ? formatPic(imgEl[1]) : '';
 
-            var titleEl = inner.match(/<div[^>]*class="video-title"[^>]*>([\s\S]*?)<\/div>/i);
+            var titleEl = inner.match(/<div[^>]*class="[^"]*video-title[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
             var title = titleEl ? cleanText(titleEl[1]) : '';
 
             var metaEl = inner.match(/<div[^>]*class="video-metadata"[^>]*>([\s\S]*?)<\/div>/i);
             var meta = metaEl ? cleanText(metaEl[1]) : '';
-
-            if (!meta) {
-                var metaEl2 = inner.match(/<div[^>]*class="meta"[^>]*>([\s\S]*?)<\/div>/i);
-                if (metaEl2) meta = cleanText(metaEl2[1]);
-            }
-
-            if (!title) {
-                var titleAttr = href.match(/title="([^"]+)"/i);
-                if (titleAttr) title = cleanText(titleAttr[1]);
-            }
 
             result.push(new MultimediaItem({
                 title: title || vodId,
@@ -89,9 +68,9 @@
         }
 
         if (result.length === 0) {
-            var altRegex = /<a[^>]*href="([^"]*\/video\/([A-Z]+-\d+[A-Z]?)(?:\/|$)[^"]*)"[^>]*>/gi;
+            var altRegex = /<a[^>]*href="([^"]*\/video\/([A-Z]+-\d+[A-Z]?)(?:\/|$)[^"]*)"[^>]*class="[^"]*video-item[^"]*"[^>]*>/gi;
             while ((match = altRegex.exec(html)) !== null) {
-                if (result.length >= ITEM_LIMIT) break;
+                if (result.length >= 24) break;
                 var vid = match[2].toUpperCase();
                 if (seen[vid]) continue;
                 seen[vid] = true;
@@ -107,22 +86,32 @@
         return result;
     }
 
-    function parsePageCount(html) {
-        var count = 1;
-        var pages = html.match(/page-(\d+)/g) || [];
-        for (var i = 0; i < pages.length; i++) {
-            var n = parseInt(pages[i].replace('page-', ''), 10);
-            if (n > count) count = n;
-        }
-        return count;
-    }
-
     async function fetchPage(url) {
         var res = await http_get(url, {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
             'Referer': HOST + '/'
         }, 15000);
         return String(res.body || '');
+    }
+
+    async function fetchVideoInfo(videoId) {
+        var sigData = generateSig();
+        var url = HOST + '/hls/get_video_info.php?id=' + encodeURIComponent(videoId) + '&sig=' + sigData.sig + '&sts=' + sigData.sts;
+        var res = await http_get(url, {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Referer': HOST + '/'
+        }, 15000);
+        var body = String(res.body || '');
+        var jsonStr = body.split('for (;;);')[1] || body;
+        var data;
+        try { data = JSON.parse(jsonStr); } catch (_) { return null; }
+        if (data && data.success && data.url) {
+            return {
+                url: decodeURIComponent(data.url),
+                type: data.type || 'mp4'
+            };
+        }
+        return null;
     }
 
     async function getHome(cb) {
@@ -176,47 +165,46 @@
             var picMatch = html.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"[^>]*\/?>/i);
             var vodPic = picMatch ? formatPic(picMatch[1]) : '';
 
-            var descMatch = html.match(/<meta[^>]*property="og:description"[^>]*content="([^"]+)"[^>]*\/?>/i);
-            var vodContent = descMatch ? descMatch[1] : '';
+            var descMeta = html.match(/<meta[^>]*property="og:description"[^>]*content="([^"]+)"[^>]*\/?>/i);
+            var descEl = html.match(/<p[^>]*id="title-description"[^>]*>([\s\S]*?)<\/p>/i);
+            var vodContent = descEl ? cleanText(descEl[1]) : (descMeta ? descMeta[1] : '');
 
             var actressName = '';
             var vodDirector = '';
             var vodYear = '';
             var studioName = '';
 
-            var tableRegex = /<tr>[\s\S]*?<th>([\s\S]*?)<\/th>[\s\S]*?<td>([\s\S]*?)<\/td>[\s\S]*?<\/tr>/gi;
+            var releaseDateMatch = html.match(/<div class="details-block">\s*<h2[^>]*>Release Date<\/h2>\s*<p[^>]*>([^<]+)<\/p>/i);
+            if (releaseDateMatch) {
+                var ym = releaseDateMatch[1].match(/(\d{4})/);
+                if (ym) vodYear = ym[1];
+            }
+
+            var tableRegex = /<tr>[\s\S]*?<th[^>]*>([\s\S]*?)<\/th>[\s\S]*?<td[^>]*>([\s\S]*?)<\/td>[\s\S]*?<\/tr>/gi;
             var tMatch;
             while ((tMatch = tableRegex.exec(html)) !== null) {
                 var th = cleanText(tMatch[1]);
                 var td = tMatch[2];
-                if (th.indexOf('Actress') === 0) {
-                    var am = td.match(/<div[^>]*class="description-vertical"[^>]*>([\s\S]*?)<\/div>/i);
+                if (th === 'Actress:') {
+                    var am = td.match(/<span[^>]*class="description-vertical[^"]*"[^>]*>([\s\S]*?)<\/span>/i);
                     actressName = am ? cleanText(am[1]) : cleanText(td);
-                } else if (th.indexOf('Director') === 0) {
+                } else if (th === 'Director:') {
                     vodDirector = cleanText(td);
-                } else if (th.indexOf('Release Date') === 0) {
-                    var ym = td.match(/(\d{4})/);
-                    if (ym) vodYear = ym[1];
-                } else if (th.indexOf('Studio') === 0) {
-                    var sm = td.match(/<div[^>]*class="description-vertical"[^>]*>([\s\S]*?)<\/div>/i);
+                } else if (th === 'Studio:') {
+                    var sm = td.match(/<span[^>]*class="description-vertical[^"]*"[^>]*>([\s\S]*?)<\/span>/i);
                     studioName = sm ? cleanText(sm[1]) : cleanText(td);
                 }
             }
 
-            var remarks = vid;
-            if (studioName) remarks += ' \u2022 ' + studioName;
-            if (actressName) remarks += ' \u2022 ' + actressName;
-
-            var m3u8Url = 'https://video10.memojav.net/stream/' + vid + '/master.m3u8';
+            var videoInfo = await fetchVideoInfo(vid);
+            var streamUrl = videoInfo ? videoInfo.url : ('https://video10.memojav.net/stream/' + vid + '/master.m3u8');
 
             var cast = [];
-            if (actressName) {
-                cast.push(new Actor({ name: actressName }));
-            }
+            if (actressName) cast.push(new Actor({ name: actressName }));
 
             var episodes = [new Episode({
                 name: '\u6B63\u7247',
-                url: m3u8Url,
+                url: vid,
                 season: 1,
                 episode: 1
             })];
@@ -232,6 +220,8 @@
                     type: 'movie',
                     year: vodYear ? parseInt(vodYear, 10) : undefined,
                     cast: cast.length ? cast : undefined,
+                    director: vodDirector || undefined,
+                    studio: studioName || undefined,
                     episodes: episodes
                 })
             });
@@ -244,8 +234,45 @@
         try {
             if (!url) return cb({ success: true, data: [] });
 
+            var videoId = String(url || '').toUpperCase().trim();
+
+            if (isValidVideoId(videoId)) {
+                var videoInfo = await fetchVideoInfo(videoId);
+                if (videoInfo && videoInfo.url) {
+                    var streams = [];
+                    if (videoInfo.type === 'hls' || /\.m3u8/i.test(videoInfo.url)) {
+                        streams.push(new StreamResult({
+                            url: videoInfo.url,
+                            quality: '1080p',
+                            type: 'hls',
+                            headers: { 'Referer': HOST + '/' }
+                        }));
+                    } else {
+                        streams.push(new StreamResult({
+                            url: videoInfo.url + '=m37',
+                            quality: '1080p',
+                            type: 'mp4',
+                            headers: { 'Referer': HOST + '/' }
+                        }));
+                        streams.push(new StreamResult({
+                            url: videoInfo.url + '=m22',
+                            quality: '720p',
+                            type: 'mp4',
+                            headers: { 'Referer': HOST + '/' }
+                        }));
+                        streams.push(new StreamResult({
+                            url: videoInfo.url + '=m18',
+                            quality: '360p',
+                            type: 'mp4',
+                            headers: { 'Referer': HOST + '/' }
+                        }));
+                    }
+                    return cb({ success: true, data: streams });
+                }
+            }
+
             if (/\.(m3u8|mp4|flv|mkv|ts)(\?|$)/i.test(url)) {
-                cb({
+                return cb({
                     success: true,
                     data: [new StreamResult({
                         url: url,
@@ -254,9 +281,9 @@
                         headers: { 'Referer': HOST + '/' }
                     })]
                 });
-            } else {
-                cb({ success: true, data: [] });
             }
+
+            cb({ success: true, data: [] });
         } catch (e) {
             cb({ success: false, errorCode: 'STREAM_ERROR', message: String(e && e.message || e) });
         }

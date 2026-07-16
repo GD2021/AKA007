@@ -4,6 +4,6 @@
   "description": "SkyStream plugin for MemoJav JAV provider",
   "manifestVersion": 1,
   "pluginLists": [
-    "https://raw.githubusercontent.com/GD2021/AKA007/main/dist/plugins.json"
+    "https://raw.githubusercontent.com/GD2021/AKA007/main/repo.json/dist/plugins.json"
   ]
 }
