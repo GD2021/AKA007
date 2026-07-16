@@ -1,0 +1,10 @@
+{
+    "packageName": "com.madou.provider",
+    "name": "麻豆Video",
+    "version": 1,
+    "baseUrl": "https://91md.me",
+    "description": "JAV video provider from Madou (91MD)",
+    "authors": ["GD2021"],
+    "languages": ["ja"],
+    "categories": ["Movie"]
+}

@@ -68,6 +68,23 @@
     "url": "https://raw.githubusercontent.com/GD2021/AKA007/main/dist/com.kanav.provider.sky"
   },
   {
+    "packageName": "com.madou.provider",
+    "name": "麻豆Video",
+    "version": 1,
+    "baseUrl": "https://91md.me",
+    "description": "JAV video provider from Madou (91MD)",
+    "authors": [
+      "GD2021"
+    ],
+    "languages": [
+      "ja"
+    ],
+    "categories": [
+      "Movie"
+    ],
+    "url": "https://raw.githubusercontent.com/GD2021/AKA007/main/dist/com.madou.provider.sky"
+  },
+  {
     "packageName": "com.memojav.provider",
     "name": "MemoJav",
     "version": 1,
