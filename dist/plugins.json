@@ -14,7 +14,7 @@
     "categories": [
       "Movie"
     ],
-    "url": "https://raw.githubusercontent.com/GD2021/AKA007/main/dist/dist/com.ninetyonepinse.provider.sky"
+    "url": "https://raw.githubusercontent.com/GD2021/AKA007/main/dist/com.ninetyonepinse.provider.sky"
   },
   {
     "packageName": "com.hsex.provider",
@@ -31,7 +31,7 @@
     "categories": [
       "Movie"
     ],
-    "url": "https://raw.githubusercontent.com/GD2021/AKA007/main/dist/dist/com.hsex.provider.sky"
+    "url": "https://raw.githubusercontent.com/GD2021/AKA007/main/dist/com.hsex.provider.sky"
   },
   {
     "packageName": "com.jmtt.provider",
@@ -48,7 +48,7 @@
     "categories": [
       "Movie"
     ],
-    "url": "https://raw.githubusercontent.com/GD2021/AKA007/main/dist/dist/com.jmtt.provider.sky"
+    "url": "https://raw.githubusercontent.com/GD2021/AKA007/main/dist/com.jmtt.provider.sky"
   },
   {
     "packageName": "com.kanav.provider",
@@ -65,7 +65,7 @@
     "categories": [
       "Movie"
     ],
-    "url": "https://raw.githubusercontent.com/GD2021/AKA007/main/dist/dist/com.kanav.provider.sky"
+    "url": "https://raw.githubusercontent.com/GD2021/AKA007/main/dist/com.kanav.provider.sky"
   },
   {
     "packageName": "com.madou.provider",
@@ -82,7 +82,7 @@
     "categories": [
       "Movie"
     ],
-    "url": "https://raw.githubusercontent.com/GD2021/AKA007/main/dist/dist/com.madou.provider.sky"
+    "url": "https://raw.githubusercontent.com/GD2021/AKA007/main/dist/com.madou.provider.sky"
   },
   {
     "packageName": "com.memojav.provider",
@@ -99,6 +99,6 @@
     "categories": [
       "Movie"
     ],
-    "url": "https://raw.githubusercontent.com/GD2021/AKA007/main/dist/dist/com.memojav.provider.sky"
+    "url": "https://raw.githubusercontent.com/GD2021/AKA007/main/dist/com.memojav.provider.sky"
   }
 ]
