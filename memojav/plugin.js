@@ -17,8 +17,6 @@
         { id: 'categories/documentary', name: 'Documentary' },
     ];
 
-    var HOME_ITEM_LIMIT = 12;
-
     function cleanText(html) {
         if (!html) return '';
         var t = String(html).replace(/<[^>]+>/g, '');
@@ -117,14 +115,28 @@
         return String(res.body || '');
     }
 
-    async function fetchCategoryItems(cat, page) {
-        try {
-            var url = getHost() + buildUrl(cat.id, page);
-            var html = await fetchPage(url);
-            return parseList(html, 24);
-        } catch (_) {
-            return [];
+    async function fetchCategoryItems(cat) {
+        var pageItems = await Promise.all([1, 2, 3].map(async function (p) {
+            try {
+                var url = getHost() + buildUrl(cat.id, p);
+                var html = await fetchPage(url);
+                return parseList(html, 24);
+            } catch (_) {
+                return [];
+            }
+        }));
+        var seen = {};
+        var merged = [];
+        for (var i = 0; i < pageItems.length && merged.length < 60; i++) {
+            for (var j = 0; j < pageItems[i].length && merged.length < 60; j++) {
+                var item = pageItems[i][j];
+                if (!seen[item.url]) {
+                    seen[item.url] = true;
+                    merged.push(item);
+                }
+            }
         }
+        return merged;
     }
 
     async function fetchVideoInfo(videoId) {
@@ -152,7 +164,7 @@
             var sections = {};
 
             var results = await Promise.all(CATEGORIES.map(async function (cat) {
-                var items = await fetchCategoryItems(cat, 1);
+                var items = await fetchCategoryItems(cat);
                 return { name: cat.name, items: items };
             }));
 
