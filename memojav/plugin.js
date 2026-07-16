@@ -17,7 +17,7 @@
         { name: 'Documentary',           slug: 'categories/documentary' },
     ];
 
-    var PAGE_SIZE = 3;
+    function text(el) { return el ? (el.textContent || el.innerText || '').trim() : ''; }
 
     function fixUrl(u) {
         if (!u) return '';
@@ -40,14 +40,12 @@
             if (!href) continue;
             var vid = (href.match(/\/video\/([A-Z]+-\d+[A-Z]?)/i) || [])[1];
             if (!vid) continue;
-            var titleEl = a.querySelector('.video-title');
-            var title = titleEl ? (titleEl.textContent || titleEl.innerText || '').trim() : vid;
+            var title = text(a.querySelector('.video-title')) || vid;
             var img = a.querySelector('img');
             var poster = img ? fixUrl(img.getAttribute('src') || '') : '';
-            var metaEl = a.querySelector('.video-metadata');
-            var desc = metaEl ? (metaEl.textContent || metaEl.innerText || '').trim() : '';
+            var desc = text(a.querySelector('.video-metadata'));
             items.push(new MultimediaItem({
-                title: title || vid,
+                title: title,
                 url: BASE + '/video/' + vid,
                 posterUrl: poster,
                 type: 'movie',
@@ -78,19 +76,24 @@
             var allItems = [];
             await Promise.all(CATEGORIES.map(async function (cat) {
                 try {
-                    var pageItems = [];
-                    for (var p = 1; p <= PAGE_SIZE; p++) {
+                    var pages = await Promise.all([1, 2, 3].map(async function (p) {
                         try {
                             var res = await http_get(catPageUrl(cat.slug, p), HEADERS);
-                            if (!res || res.status !== 200) continue;
-                            var doc = await parseHtml(res.body);
-                            var parsed = parseItems(doc);
-                            for (var k = 0; k < parsed.length; k++) pageItems.push(parsed[k]);
-                        } catch (_) {}
+                            if (!res || res.status !== 200) return [];
+                            return parseItems(await parseHtml(res.body));
+                        } catch (_) { return []; }
+                    }));
+                    var seen = {};
+                    var merged = [];
+                    for (var pi = 0; pi < pages.length; pi++) {
+                        for (var pj = 0; pj < pages[pi].length; pj++) {
+                            var item = pages[pi][pj];
+                            if (!seen[item.url]) { seen[item.url] = true; merged.push(item); }
+                        }
                     }
-                    if (pageItems.length > 0) {
-                        home[cat.name] = pageItems;
-                        for (var m = 0; m < pageItems.length; m++) allItems.push(pageItems[m]);
+                    if (merged.length > 0) {
+                        home[cat.name] = merged;
+                        for (var m = 0; m < merged.length; m++) allItems.push(merged[m]);
                     }
                 } catch (_) {}
             }));
@@ -115,16 +118,13 @@
             if (!res || res.status !== 200) return cb({ success: false, errorCode: 'NOT_FOUND' });
             var doc = await parseHtml(res.body);
 
-            var titleEl = doc.querySelector('h1#title');
-            var title = titleEl ? (titleEl.textContent || titleEl.innerText || '').trim() : '';
+            var title = text(doc.querySelector('h1#title'));
 
             var poster = '';
             var ogImg = doc.querySelector('meta[property="og:image"]');
             if (ogImg) poster = fixUrl(ogImg.getAttribute('content') || '');
 
-            var desc = '';
-            var descP = doc.querySelector('p#title-description');
-            if (descP) desc = (descP.textContent || descP.innerText || '').trim();
+            var desc = text(doc.querySelector('p#title-description'));
             if (!desc) {
                 var ogDesc = doc.querySelector('meta[property="og:description"]');
                 if (ogDesc) desc = ogDesc.getAttribute('content') || '';
@@ -132,10 +132,10 @@
 
             var year;
             var releaseBlock = doc.querySelector('div.details-block h2');
-            if (releaseBlock && (releaseBlock.textContent || '').indexOf('Release') !== -1) {
+            if (releaseBlock && text(releaseBlock).indexOf('Release') !== -1) {
                 var releaseP = releaseBlock.parentNode ? releaseBlock.parentNode.querySelector('p') : null;
                 if (releaseP) {
-                    var ym = (releaseP.textContent || '').match(/(\d{4})/);
+                    var ym = text(releaseP).match(/(\d{4})/);
                     if (ym) year = parseInt(ym[1]);
                 }
             }
@@ -148,16 +148,14 @@
                 var th = rows[i].querySelector('th');
                 var td = rows[i].querySelector('td');
                 if (!th || !td) continue;
-                var label = (th.textContent || th.innerText || '').trim();
-                var val = (td.textContent || td.innerText || '').trim();
+                var label = text(th);
+                var val = text(td);
                 if (label === 'Actress:') {
-                    var span = td.querySelector('span.description-vertical');
-                    actressName = span ? (span.textContent || span.innerText || '').trim() : val;
+                    actressName = text(td.querySelector('span.description-vertical')) || val;
                 } else if (label === 'Director:') {
                     director = val;
                 } else if (label === 'Studio:') {
-                    var span2 = td.querySelector('span.description-vertical');
-                    studio = span2 ? (span2.textContent || span2.innerText || '').trim() : val;
+                    studio = text(td.querySelector('span.description-vertical')) || val;
                 }
             }
 
