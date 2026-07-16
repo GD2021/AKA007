@@ -1,233 +1,251 @@
 (function () {
+    'use strict';
 
-    var BASE = (typeof manifest !== 'undefined' && manifest && manifest.baseUrl) ? manifest.baseUrl : 'https://kanav.ad';
-    var UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
-    var HEADERS = { 'User-Agent': UA, 'Referer': BASE + '/', 'Accept-Language': 'zh-CN,zh;q=0.9' };
+    const BASE = (typeof manifest !== 'undefined' && manifest?.baseUrl) || 'https://kanav.ad';
+    const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+    const HEADERS = { 'User-Agent': UA, 'Referer': BASE + '/', 'Accept-Language': 'zh-CN,zh;q=0.9' };
 
-    var CATEGORIES = [
-        { tid: '1',  name: '\u4E2D\u6587\u5B57\u5E55' },
-        { tid: '2',  name: '\u65E5\u97E9\u6709\u7801' },
-        { tid: '3',  name: '\u65E5\u97E9\u65E0\u7801' },
-        { tid: '4',  name: '\u56FD\u4EA7AV' },
-        { tid: '22', name: '\u6D41\u51FA\u81EA\u62CD' },
-        { tid: '20', name: '\u52A8\u6F2B\u756A\u5267' },
-        { tid: '\u7B2C\u4E00\u89C6\u89D2', name: '\u7B2C\u4E00\u89C6\u89D2' },
-        { tid: '\u773C\u955C', name: '\u773C\u955C' },
-        { tid: '\u5DE8\u5C4C', name: '\u5DE8\u5C4C' },
-        { tid: '\u6210\u719F\u7684\u5973\u4EBA', name: '\u6210\u719F\u7684\u5973\u4EBA' },
-        { tid: '\u5A46\u5A46', name: '\u5A46\u5A46' },
-        { tid: '\u5973\u4E0A\u53F8', name: '\u5973\u4E0A\u53F8' },
-        { tid: '\u5C3B\u7A74', name: '\u5C3B\u7A74' },
-        { tid: '\u5973\u4F18', name: '\u5973\u4F18' },
-        { tid: '\u5DE8\u4E73', name: '\u5DE8\u4E73' },
-        { tid: '\u7EAA\u5F55\u7247', name: '\u7EAA\u5F55\u7247' },
+    const CATEGORIES = [
+        { tid: '1',  name: '中文字幕' },
+        { tid: '2',  name: '日韩有码' },
+        { tid: '3',  name: '日韩无码' },
+        { tid: '4',  name: '国产AV' },
+        { tid: '22', name: '流出自拍' },
+        { tid: '20', name: '动漫番剧' },
+        { tid: '第一视角', name: '第一视角' },
+        { tid: '眼镜', name: '眼镜' },
+        { tid: '巨臀', name: '巨臀' },
+        { tid: '成熟的女人', name: '成熟的女人' },
+        { tid: '婆婆', name: '婆婆' },
+        { tid: '女上司', name: '女上司' },
+        { tid: '臀穴', name: '臀穴' },
+        { tid: '女优', name: '女优' },
+        { tid: '巨乳', name: '巨乳' },
+        { tid: '记录片', name: '记录片' }
     ];
 
-    var KEYWORD_TIDS = {};
-    for (var ci = 0; ci < CATEGORIES.length; ci++) {
-        if (isNaN(Number(CATEGORIES[ci].tid))) KEYWORD_TIDS[CATEGORIES[ci].tid] = true;
-    }
+    const CARD = 'div.col-md-3.col-sm-6.col-xs-6';
 
-    function text(html) {
-        return (html || '').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&#(\d+);/g, function (_, c) { return String.fromCharCode(c); }).replace(/\s+/g, ' ').trim();
-    }
+    const KEYWORD_TIDS = CATEGORIES.reduce((m, c) => {
+        if (isNaN(Number(c.tid))) m[c.tid] = true;
+        return m;
+    }, {});
+    const isKeywordType = (tid) => !!KEYWORD_TIDS[tid];
 
-    function fixUrl(u) {
+    const catPageUrl = (tid, sort, page) => isKeywordType(tid)
+        ? `${BASE}/index.php/vod/search/by/${sort}/page/${page}/wd/${encodeURIComponent(tid)}.html`
+        : `${BASE}/index.php/vod/show/by/${sort}/id/${tid}/page/${page}.html`;
+    const searchUrl = (kw, sort, page) => `${BASE}/index.php/vod/search/by/${sort}/page/${page}/wd/${encodeURIComponent(kw)}.html`;
+    const playPageUrl = (id) => `${BASE}/index.php/vod/play/id/${id}/sid/1/nid/1.html`;
+
+    const extractId = (u) => {
         if (!u) return '';
-        if (u.indexOf('//') === 0) return 'https:' + u;
-        if (u.indexOf('http') === 0) return u;
-        return u;
-    }
+        const m = String(u).match(/\/vod\/play\/id\/(\d+)/);
+        return m ? m[1] : (/^\d+$/.test(String(u).trim()) ? String(u).trim() : '');
+    };
+    const fixUrl = (u) => {
+        if (!u) return '';
+        if (u.startsWith('//')) return 'https:' + u;
+        if (u.startsWith('http')) return u;
+        return '';
+    };
 
-    function isKeywordType(tid) { return !!KEYWORD_TIDS[tid]; }
+    const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', nbsp: ' ', '#39': "'", apos: "'" };
+    const decodeEntities = (s) => (s || '')
+        .replace(/&([a-z]+|#\d+);/gi, (_, c) => {
+            if (c[0] === '#') return String.fromCharCode(parseInt(c.slice(1), 10) || 0);
+            return ENT[c.toLowerCase()] ?? _;
+        })
+        .replace(/\s+/g, ' ').trim();
 
-    function catPageUrl(tid, sort, page) {
-        if (isKeywordType(tid)) return BASE + '/index.php/vod/search/by/' + sort + '/page/' + page + '/wd/' + encodeURIComponent(tid) + '.html';
-        return BASE + '/index.php/vod/show/by/' + sort + '/id/' + tid + '/page/' + page + '.html';
-    }
+    const meta = async (html, sel, attr = 'content') => {
+        const r = await parse_html(html, sel, attr);
+        const hit = r[0];
+        if (!hit) return '';
+        return decodeEntities(attr ? (hit.attr || '') : (hit.text || ''));
+    };
 
-    function searchUrl(keyword, sort, page) {
-        return BASE + '/index.php/vod/search/by/' + sort + '/page/' + page + '/wd/' + encodeURIComponent(keyword) + '.html';
-    }
+    const domPoster = async (html) => {
+        const doc = await parse_dom(html);
+        const img = doc.querySelector('.countext-img') || doc.querySelector('.stui-pannel__detail img, .detail-info img, img[data-original]');
+        return fixUrl(img?.getAttribute('data-original') || img?.getAttribute('src') || '');
+    };
 
-    function playPageUrl(id) {
-        return BASE + '/index.php/vod/play/id/' + id + '/sid/1/nid/1.html';
-    }
+    const domText = async (html, sel) => {
+        const doc = await parse_dom(html);
+        const el = doc.querySelector(sel);
+        return el ? decodeEntities(el.textContent) : '';
+    };
 
-    function parseList(html) {
-        var items = [];
-        var regex = /<div\s+class="col-md-3\s+col-sm-6\s+col-xs-6"[^>]*>[\s\S]*?<\/div>\s*<\/div>/g;
-        var m;
-        while ((m = regex.exec(html)) !== null && items.length < 24) {
-            var block = m[0];
-            var linkMatch = block.match(/href="(\/index\.php\/vod\/play\/id\/(\d+)\/sid\/\d+\/nid\/\d+\.html)"/);
-            if (!linkMatch) continue;
-            var id = linkMatch[2];
-            var picMatch = block.match(/<img\s+[^>]*data-original="([^"]+)"/) || block.match(/<img\s+[^>]*src="([^"]+)"/);
-            var pic = picMatch ? fixUrl(picMatch[1]) : '';
-            var altMatch = block.match(/<img\s+[^>]*alt="([^"]+)"/);
-            var titleMatch = block.match(/href="[^"]+"\s+title="([^"]+)"/);
-            var title = altMatch ? text(altMatch[1]) : (titleMatch ? titleMatch[1] : '');
-            var remarkMatch = block.match(/<span\s+class="model-view"[^>]*>([\s\S]*?)<\/span>/);
-            var desc = remarkMatch ? text(remarkMatch[1]) : '';
+    const domYear = async (html) => {
+        const m = String(html).match(/上映日期[：:]\s*(\d{4})-/);
+        return m ? parseInt(m[1], 10) : 0;
+    };
+
+    const parseDuration = (s) => {
+        const t = decodeEntities(s);
+        let m = 0;
+        const h = t.match(/(\d+)\s*小时/); if (h) m += parseInt(h[1], 10) * 60;
+        const min = t.match(/(\d+)\s*分钟/); if (min) m += parseInt(min[1], 10);
+        return m || 0;
+    };
+
+    async function parseList(html) {
+        const doc = await parse_dom(html);
+        const items = [];
+        const cards = doc.querySelectorAll(CARD);
+        for (const card of cards) {
+            if (items.length >= 24) break;
+            const link = card.querySelector('a[href*="/vod/play/"]');
+            const href = link?.getAttribute('href') || '';
+            const id = (href.match(/\/id\/(\d+)/) || [])[1];
+            if (!id) continue;
+            const img = card.querySelector('img');
+            const pic = fixUrl(img?.getAttribute('data-original') || img?.getAttribute('src') || '');
+            const title = decodeEntities(img?.getAttribute('alt') || link?.getAttribute('title') || '') || ('视频 ' + id);
+            const durEl = card.querySelector('.model-view');
+            const duration = durEl ? parseDuration(durEl.textContent) : 0;
             items.push(new MultimediaItem({
-                title: title || '\u89C6\u9891 ' + id,
-                url: id,
-                posterUrl: pic,
-                type: 'movie',
-                description: desc || undefined
+                title, url: id, posterUrl: pic, type: 'movie',
+                ...(duration ? { duration } : {})
             }));
         }
-        if (items.length === 0) {
-            var altRegex = /href="(\/index\.php\/vod\/play\/id\/(\d+)\/sid\/\d+\/nid\/\d+\.html)"/g;
-            while ((m = altRegex.exec(html)) !== null && items.length < 24) {
-                var fid = m[2];
-                items.push(new MultimediaItem({ title: '\u89C6\u9891 ' + fid, url: fid, posterUrl: '', type: 'movie' }));
+        if (!items.length) {
+            const links = await parse_html(html, 'a[href*="/vod/play/id/"]', 'href');
+            for (const l of links) {
+                if (items.length >= 24) break;
+                const id = (l.attr || '').match(/\/id\/(\d+)/)?.[1];
+                if (id) items.push(new MultimediaItem({ title: '视频 ' + id, url: id, posterUrl: '', type: 'movie' }));
             }
         }
         return items;
     }
 
-    function extractPlayerJson(html) {
-        var start = html.indexOf('player_aaaa=');
-        if (start < 0) return null;
-        var jsonStart = start + 'player_aaaa='.length;
-        if (jsonStart >= html.length || html[jsonStart] !== '{') return null;
-        var braceCount = 0;
-        for (var i = jsonStart; i < html.length; i++) {
-            if (html[i] === '{') braceCount++;
-            else if (html[i] === '}') {
-                braceCount--;
-                if (braceCount === 0) {
-                    try { return JSON.parse(html.substring(jsonStart, i + 1)); } catch (_) { return null; }
-                }
+    async function getPlayerJson(html) {
+        const scripts = await parse_html(html, 'script', 'innerHTML');
+        for (const s of scripts) {
+            const body = s.innerHTML || '';
+            const i = body.indexOf('player_aaaa=');
+            if (i < 0) continue;
+            const start = i + 'player_aaaa='.length;
+            if (body[start] !== '{') continue;
+            let depth = 0, end = -1;
+            for (let j = start; j < body.length; j++) {
+                if (body[j] === '{') depth++;
+                else if (body[j] === '}') { depth--; if (depth === 0) { end = j; break; } }
             }
+            if (end < 0) continue;
+            try { return JSON.parse(body.slice(start, end + 1)); } catch (_) {}
         }
         return null;
     }
 
-    function decryptUrl(encoded) {
+    const decryptUrl = (encoded) => {
         try {
-            var step1 = atob(encoded);
-            var step2 = decodeURIComponent(step1);
-            var step3 = decodeURIComponent(step2);
-            return step3;
+            return decodeURIComponent(decodeURIComponent(atob(encoded)));
         } catch (_) { return ''; }
+    };
+
+    function buildStreams(player) {
+        if (!player || !player.url) return [];
+        const raw = player.encrypt === 2 ? decryptUrl(player.url) : player.url;
+        if (!raw) return [];
+        const isHls = /\.m3u8/i.test(raw);
+        return [new StreamResult({ url: raw, quality: isHls ? 'Auto' : '720p', headers: HEADERS })];
+    }
+
+    async function resolveStreams(player) {
+        return buildStreams(player);
     }
 
     async function getHome(cb) {
         try {
-            var home = {};
-            var sort = 'time_add';
-            await Promise.all(CATEGORIES.map(async function (cat) {
-                try {
-                    var res = await http_get(catPageUrl(cat.tid, sort, 1), HEADERS);
-                    if (!res || res.status !== 200) return;
-                    var items = parseList(String(res.body || ''));
-                    if (items.length > 0) home[cat.name] = items;
-                } catch (_) {}
+            const sort = 'time_add';
+            const requests = CATEGORIES.map((c) => ({ url: catPageUrl(c.tid, sort, 1), headers: HEADERS }));
+            const responses = await http_parallel(requests);
+            const homes = await Promise.all(responses.map(async (res, i) => {
+                if (!res || res.status !== 200) return null;
+                const items = await parseList(String(res.body || ''));
+                return items.length ? { name: CATEGORIES[i].name, items } : null;
             }));
+            const home = {};
+            homes.forEach((h) => { if (h) home[h.name] = h.items; });
             cb({ success: true, data: home });
         } catch (e) {
-            cb({ success: false, errorCode: 'HOME_ERROR', message: String(e && e.message || e) });
+            cb({ success: false, errorCode: 'HOME_ERROR', message: String(e?.message || e) });
         }
     }
 
     async function search(query, cb) {
         try {
-            var q = String(query || '').trim();
+            const q = String(query || '').trim();
             if (!q) return cb({ success: true, data: [] });
-            var sort = 'time_add';
-            var res = await http_get(searchUrl(q, sort, 1), HEADERS);
+            const res = await http_get(searchUrl(q, 'time_add', 1), HEADERS);
             if (!res || res.status !== 200) return cb({ success: true, data: [] });
-            var items = parseList(String(res.body || ''));
-            cb({ success: true, data: items });
+            cb({ success: true, data: await parseList(String(res.body || '')) });
         } catch (e) {
-            cb({ success: false, errorCode: 'SEARCH_ERROR', message: String(e && e.message || e) });
+            cb({ success: false, errorCode: 'SEARCH_ERROR', message: String(e?.message || e) });
         }
     }
 
     async function load(url, cb) {
         try {
-            var id = String(url || '').trim();
-            if (!id || !/^\d+$/.test(id)) return cb({ success: false, errorCode: 'INVALID_ID' });
+            const id = extractId(url);
+            if (!id) return cb({ success: false, errorCode: 'INVALID_ID' });
 
-            var html = String((await http_get(playPageUrl(id), HEADERS)).body || '');
-            var title = text(html.match(/<meta\s+(?:property|name)="og:title"\s+content="([^"]+)"/)?.[1] || '')
-                     || text(html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || '')
-                     || '\u89C6\u9891 ' + id;
+            const res = await http_get(playPageUrl(id), HEADERS);
+            const html = String(res?.body || '');
 
-            var pic = fixUrl(html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/)?.[1] || '');
+            const ogPic = fixUrl(await meta(html, 'meta[property="og:image"]'));
+            const pic = ogPic || await domPoster(html);
+            const desc = await domText(html, 'h1');
+            const year = await domYear(html);
 
-            var player = extractPlayerJson(html);
-            var actressName = '';
-            var director = '';
-            var vodName = title;
-            if (player && player.vod_data) {
-                vodName = player.vod_data.vod_name || title;
-                actressName = player.vod_data.vod_actor || '';
-                director = player.vod_data.vod_director || '';
+            const player = await getPlayerJson(html);
+            let vodName = '';
+            let actress = '';
+            if (player?.vod_data) {
+                vodName = player.vod_data.vod_name || '';
+                actress = player.vod_data.vod_actor || '';
             }
+            const title = decodeEntities(vodName) || (await domText(html, 'h1')) || ('视频 ' + id);
 
-            var classText = '';
-            var detailMatch = html.match(/class="stui-pannel__detail[^"]*"[^>]*>([\s\S]*?)<\/div>/i)
-                          || html.match(/class="detail-info"[^>]*>([\s\S]*?)<\/div>/i);
-            if (detailMatch) classText = text(detailMatch[1]);
-            var keywords = text(html.match(/<meta\s+name="keywords"\s+content="([^"]+)"/)?.[1] || '');
-
-            var cast = actressName ? [new Actor({ name: actressName })] : [];
+            const cast = actress ? [new Actor({ name: actress })] : [];
+            const streams = await resolveStreams(player);
 
             cb({
                 success: true,
                 data: new MultimediaItem({
-                    title: vodName.substring(0, 120),
+                    title: title.slice(0, 120),
                     url: id,
                     posterUrl: pic,
-                    backgroundPosterUrl: pic || undefined,
-                    description: classText || keywords || undefined,
                     type: 'movie',
-                    cast: cast.length ? cast : undefined,
-                    director: director || undefined,
+                    ...(year ? { year } : {}),
+                    ...(desc ? { description: desc } : {}),
+                    ...(cast.length ? { cast } : {}),
                     episodes: [new Episode({
-                        name: '\u6B63\u7247',
+                        name: '正片',
                         url: id,
                         season: 1,
-                        episode: 1
+                        episode: 1,
+                        ...(streams.length ? { streams } : {})
                     })]
                 })
             });
         } catch (e) {
-            cb({ success: false, errorCode: 'LOAD_ERROR', message: String(e && e.message || e) });
+            cb({ success: false, errorCode: 'LOAD_ERROR', message: String(e?.message || e) });
         }
     }
 
     async function loadStreams(url, cb) {
         try {
-            var id = String(url || '').trim();
-            if (!id || !/^\d+$/.test(id)) return cb({ success: true, data: [] });
-
-            var html = String((await http_get(playPageUrl(id), HEADERS)).body || '');
-            var player = extractPlayerJson(html);
-            var streams = [];
-
-            if (player && player.url) {
-                var raw = (player.encrypt === 2) ? decryptUrl(player.url) : player.url;
-                if (raw) {
-                    if (/\.m3u8(?:\?|$)/i.test(raw)) {
-                        streams.push(new StreamResult({ url: raw, quality: '720p', type: 'hls', headers: HEADERS }));
-                    } else if (/\.(mp4|flv|mkv|ts)(\?|$|#)/i.test(raw)) {
-                        streams.push(new StreamResult({ url: raw, quality: '720p', type: 'mp4', headers: HEADERS }));
-                    }
-                }
-            }
-
-            if (!streams.length) {
-                streams.push(new StreamResult({ url: playPageUrl(id), quality: '720p', type: 'hls', headers: HEADERS }));
-            }
-
-            cb({ success: true, data: streams });
+            const id = extractId(url);
+            if (!id) return cb({ success: true, data: [] });
+            const res = await http_get(playPageUrl(id), HEADERS);
+            const player = await getPlayerJson(String(res?.body || ''));
+            cb({ success: true, data: await resolveStreams(player) });
         } catch (e) {
-            cb({ success: false, errorCode: 'STREAM_ERROR', message: String(e && e.message || e) });
+            cb({ success: false, errorCode: 'STREAM_ERROR', message: String(e?.message || e) });
         }
     }
 

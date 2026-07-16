@@ -4,6 +4,6 @@
   "description": "JAV video provider collection for SkyStream",
   "manifestVersion": 1,
   "pluginLists": [
-    "https://raw.githubusercontent.com/GD2021/AKA007/main/dist/plugins.json"
+    "https://raw.githubusercontent.com/GD2021/AKA007/main/dist/dist/plugins.json"
   ]
 }
