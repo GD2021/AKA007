@@ -1,188 +1,104 @@
 (function () {
 
-    function getHost() {
-        try { return manifest.baseUrl || 'https://memojav.com'; } catch (_) { return 'https://memojav.com'; }
-    }
+    var BASE = (typeof manifest !== 'undefined' && manifest && manifest.baseUrl) ? manifest.baseUrl : 'https://memojav.com';
+    var UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0';
+    var HEADERS = { 'User-Agent': UA, 'Referer': BASE + '/' };
 
     var CATEGORIES = [
-        { id: 'best', name: '\u6700\u4F73' },
-        { id: 'video', name: '\u6700\u65B0' },
-        { id: 'categories/big-tits-lover', name: 'Big Tits Lover' },
-        { id: 'categories/big-tits', name: 'Big Tits' },
-        { id: 'categories/bodysuit', name: 'Bodysuit' },
-        { id: 'categories/mature-woman', name: 'Mature Woman' },
-        { id: 'categories/stepfamily', name: 'Stepfamily' },
-        { id: 'categories/outdoor', name: 'Outdoor' },
-        { id: 'categories/milf', name: 'MILF' },
-        { id: 'categories/documentary', name: 'Documentary' },
+        { name: '\u6700\u4F73',          slug: 'best' },
+        { name: '\u6700\u65B0',          slug: 'video' },
+        { name: 'Big Tits Lover',        slug: 'categories/big-tits-lover' },
+        { name: 'Big Tits',              slug: 'categories/big-tits' },
+        { name: 'Bodysuit',              slug: 'categories/bodysuit' },
+        { name: 'Mature Woman',          slug: 'categories/mature-woman' },
+        { name: 'Stepfamily',            slug: 'categories/stepfamily' },
+        { name: 'Outdoor',               slug: 'categories/outdoor' },
+        { name: 'MILF',                  slug: 'categories/milf' },
+        { name: 'Documentary',           slug: 'categories/documentary' },
     ];
 
-    function cleanText(html) {
-        if (!html) return '';
-        var t = String(html).replace(/<[^>]+>/g, '');
-        t = t.replace(/\s*\/\s*/g, ' ');
-        return t.replace(/\s+/g, ' ').trim();
+    var PAGE_SIZE = 3;
+
+    function fixUrl(u) {
+        if (!u) return '';
+        if (u.indexOf('//') === 0) return 'https:' + u;
+        if (u.indexOf('http') === 0) return u;
+        return BASE + (u.indexOf('/') === 0 ? '' : '/') + u;
     }
 
-    function formatPic(url) {
-        if (!url) return '';
-        if (url.indexOf('//') === 0) return 'https:' + url;
-        if (url.indexOf('http') === 0) return url;
-        return getHost() + (url.indexOf('/') === 0 ? '' : '/') + url;
+    function catPageUrl(slug, page) {
+        if (slug === 'best') return page === 1 ? BASE + '/best/' : BASE + '/best/page-' + page;
+        return page === 1 ? BASE + '/' + slug + '/' : BASE + '/' + slug + '/page-' + page;
     }
 
-    function isValidVideoId(vid) {
-        return /^[A-Z]+-\d+[A-Z]?$/i.test(vid);
-    }
-
-    function generateSig() {
-        var t = new Date().getTime();
-        var sig = btoa(String(t));
-        var s = sig.length - 12;
-        sig = sig.substr(s, 10);
-        var sts = 1;
-        for (var i = 0; i < 10; i++) {
-            sts += sig.charCodeAt(i) * i * 1743;
-        }
-        return { sig: sig, sts: sts };
-    }
-
-    function buildUrl(typeId, page) {
-        if (typeId === 'best') return page === 1 ? '/best/' : '/best/page-' + page;
-        return page === 1 ? '/' + typeId + '/' : '/' + typeId + '/page-' + page;
-    }
-
-    function parseList(html, limit) {
-        if (!html) return [];
-        var result = [];
-        var seen = {};
-        var maxItems = limit || 24;
-
-        var itemRegex = /<a[^>]*href="([^"]+)"[^>]*class="[^"]*video-item[^"]*"[^>]*>([\s\S]*?)<\/a>/gi;
-        var match;
-        while ((match = itemRegex.exec(html)) !== null) {
-            if (result.length >= maxItems) break;
-            var href = match[1];
-            var inner = match[2];
-            var vidMatch = href.match(/\/video\/([A-Z]+-\d+[A-Z]?)/i);
-            if (!vidMatch) continue;
-            var vodId = vidMatch[1].toUpperCase();
-            if (seen[vodId]) continue;
-            seen[vodId] = true;
-
-            var imgEl = inner.match(/<img[^>]*src="([^"]+)"[^>]*>/i);
-            var pic = imgEl ? formatPic(imgEl[1]) : '';
-
-            var titleEl = inner.match(/<div[^>]*class="[^"]*video-title[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
-            var title = titleEl ? cleanText(titleEl[1]) : '';
-
-            var metaEl = inner.match(/<div[^>]*class="video-metadata"[^>]*>([\s\S]*?)<\/div>/i);
-            var meta = metaEl ? cleanText(metaEl[1]) : '';
-
-            result.push(new MultimediaItem({
-                title: title || vodId,
-                url: vodId,
-                posterUrl: pic,
+    function parseItems(doc) {
+        var items = [];
+        var articles = doc.querySelectorAll('a.video-item');
+        for (var i = 0; i < articles.length && items.length < 24; i++) {
+            var a = articles[i];
+            var href = a.getAttribute('href');
+            if (!href) continue;
+            var vid = (href.match(/\/video\/([A-Z]+-\d+[A-Z]?)/i) || [])[1];
+            if (!vid) continue;
+            var titleEl = a.querySelector('.video-title');
+            var title = titleEl ? (titleEl.textContent || titleEl.innerText || '').trim() : vid;
+            var img = a.querySelector('img');
+            var poster = img ? fixUrl(img.getAttribute('src') || '') : '';
+            var metaEl = a.querySelector('.video-metadata');
+            var desc = metaEl ? (metaEl.textContent || metaEl.innerText || '').trim() : '';
+            items.push(new MultimediaItem({
+                title: title || vid,
+                url: BASE + '/video/' + vid,
+                posterUrl: poster,
                 type: 'movie',
-                description: meta || undefined
+                description: desc || undefined
             }));
         }
-
-        if (result.length === 0) {
-            var altRegex = /<a[^>]*href="([^"]*\/video\/([A-Z]+-\d+[A-Z]?)(?:\/|$)[^"]*)"[^>]*class="[^"]*video-item[^"]*"[^>]*>/gi;
-            while ((match = altRegex.exec(html)) !== null) {
-                if (result.length >= maxItems) break;
-                var vid = match[2].toUpperCase();
-                if (seen[vid]) continue;
-                seen[vid] = true;
-                result.push(new MultimediaItem({
-                    title: vid,
-                    url: vid,
+        if (items.length === 0) {
+            for (var j = 0; j < articles.length && items.length < 24; j++) {
+                var a2 = articles[j];
+                var href2 = a2.getAttribute('href');
+                if (!href2) continue;
+                var vid2 = (href2.match(/\/video\/([A-Z]+-\d+[A-Z]?)/i) || [])[1];
+                if (!vid2) continue;
+                items.push(new MultimediaItem({
+                    title: vid2,
+                    url: BASE + '/video/' + vid2,
                     posterUrl: '',
                     type: 'movie'
                 }));
             }
         }
-
-        return result;
-    }
-
-    async function fetchPage(url) {
-        var res = await http_get(url, {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Referer': getHost() + '/'
-        }, 15000);
-        return String(res.body || '');
-    }
-
-    async function fetchCategoryItems(cat) {
-        var pageItems = await Promise.all([1, 2, 3, 4, 5].map(async function (p) {
-            try {
-                var url = getHost() + buildUrl(cat.id, p);
-                var html = await fetchPage(url);
-                return parseList(html, 24);
-            } catch (_) {
-                return [];
-            }
-        }));
-        var seen = {};
-        var merged = [];
-        for (var i = 0; i < pageItems.length && merged.length < 100; i++) {
-            for (var j = 0; j < pageItems[i].length && merged.length < 100; j++) {
-                var item = pageItems[i][j];
-                if (!seen[item.url]) {
-                    seen[item.url] = true;
-                    merged.push(item);
-                }
-            }
-        }
-        return merged;
-    }
-
-    async function fetchVideoInfo(videoId) {
-        var sigData = generateSig();
-        var url = getHost() + '/hls/get_video_info.php?id=' + encodeURIComponent(videoId) + '&sig=' + sigData.sig + '&sts=' + sigData.sts;
-        var res = await http_get(url, {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Referer': getHost() + '/'
-        }, 15000);
-        var body = String(res.body || '');
-        var jsonStr = body.split('for (;;);')[1] || body;
-        var data;
-        try { data = JSON.parse(jsonStr); } catch (_) { return null; }
-        if (data && data.success && data.url) {
-            return {
-                url: decodeURIComponent(data.url),
-                type: data.type || 'mp4'
-            };
-        }
-        return null;
+        return items;
     }
 
     async function getHome(cb) {
         try {
-            var sections = {};
-
-            var results = await Promise.all(CATEGORIES.map(async function (cat) {
-                var items = await fetchCategoryItems(cat);
-                return { name: cat.name, items: items };
-            }));
-
-            var trending = [];
-            results.forEach(function (r) {
-                if (r.items.length) {
-                    sections[r.name] = r.items;
-                    if (trending.length < 12) {
-                        trending = trending.concat(r.items.slice(0, 4));
+            var home = {};
+            var allItems = [];
+            await Promise.all(CATEGORIES.map(async function (cat) {
+                try {
+                    var pageItems = [];
+                    for (var p = 1; p <= PAGE_SIZE; p++) {
+                        try {
+                            var res = await http_get(catPageUrl(cat.slug, p), HEADERS);
+                            if (!res || res.status !== 200) continue;
+                            var doc = await parseHtml(res.body);
+                            var parsed = parseItems(doc);
+                            for (var k = 0; k < parsed.length; k++) pageItems.push(parsed[k]);
+                        } catch (_) {}
                     }
-                }
-            });
-
-            if (trending.length) {
-                sections['Trending'] = trending.slice(0, 12);
+                    if (pageItems.length > 0) {
+                        home[cat.name] = pageItems;
+                        for (var m = 0; m < pageItems.length; m++) allItems.push(pageItems[m]);
+                    }
+                } catch (_) {}
+            }));
+            if (allItems.length > 0) {
+                var shuffled = allItems.slice().sort(function () { return 0.5 - Math.random(); });
+                home['Trending'] = shuffled.slice(0, 12);
             }
-
-            cb({ success: true, data: sections });
+            cb({ success: true, data: home });
         } catch (e) {
             cb({ success: false, errorCode: 'HOME_ERROR', message: String(e && e.message || e) });
         }
@@ -194,80 +110,78 @@
 
     async function load(url, cb) {
         try {
-            var vid = String(url || '').toUpperCase().trim();
-            if (!vid || !isValidVideoId(vid)) {
-                return cb({ success: false, errorCode: 'INVALID_ID', message: 'Invalid video ID: ' + vid });
+            if (!url) return cb({ success: false, errorCode: 'NO_URL' });
+            var res = await http_get(url, HEADERS);
+            if (!res || res.status !== 200) return cb({ success: false, errorCode: 'NOT_FOUND' });
+            var doc = await parseHtml(res.body);
+
+            var titleEl = doc.querySelector('h1#title');
+            var title = titleEl ? (titleEl.textContent || titleEl.innerText || '').trim() : '';
+
+            var poster = '';
+            var ogImg = doc.querySelector('meta[property="og:image"]');
+            if (ogImg) poster = fixUrl(ogImg.getAttribute('content') || '');
+
+            var desc = '';
+            var descP = doc.querySelector('p#title-description');
+            if (descP) desc = (descP.textContent || descP.innerText || '').trim();
+            if (!desc) {
+                var ogDesc = doc.querySelector('meta[property="og:description"]');
+                if (ogDesc) desc = ogDesc.getAttribute('content') || '';
             }
 
-            var html = await fetchPage(getHost() + '/video/' + vid);
-            if (!html) {
-                return cb({ success: false, errorCode: 'NOT_FOUND', message: 'Detail page not found' });
-            }
-
-            var titleMatch = html.match(/<h1[^>]*id="title"[^>]*>([\s\S]*?)<\/h1>/i);
-            var vodName = vid;
-            if (titleMatch) {
-                vodName = cleanText(titleMatch[1].replace(/\s*\|.+$/, ''));
-            }
-
-            var picMatch = html.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"[^>]*\/?>/i);
-            var vodPic = picMatch ? formatPic(picMatch[1]) : '';
-
-            var descMeta = html.match(/<meta[^>]*property="og:description"[^>]*content="([^"]+)"[^>]*\/?>/i);
-            var descEl = html.match(/<p[^>]*id="title-description"[^>]*>([\s\S]*?)<\/p>/i);
-            var vodContent = descEl ? cleanText(descEl[1]) : (descMeta ? descMeta[1] : '');
-
-            var actressName = '';
-            var vodDirector = '';
-            var vodYear = '';
-            var studioName = '';
-
-            var releaseDateMatch = html.match(/<div class="details-block">\s*<h2[^>]*>Release Date<\/h2>\s*<p[^>]*>([^<]+)<\/p>/i);
-            if (releaseDateMatch) {
-                var ym = releaseDateMatch[1].match(/(\d{4})/);
-                if (ym) vodYear = ym[1];
-            }
-
-            var tableRegex = /<tr>[\s\S]*?<th[^>]*>([\s\S]*?)<\/th>[\s\S]*?<td[^>]*>([\s\S]*?)<\/td>[\s\S]*?<\/tr>/gi;
-            var tMatch;
-            while ((tMatch = tableRegex.exec(html)) !== null) {
-                var th = cleanText(tMatch[1]);
-                var td = tMatch[2];
-                if (th === 'Actress:') {
-                    var am = td.match(/<span[^>]*class="description-vertical[^"]*"[^>]*>([\s\S]*?)<\/span>/i);
-                    actressName = am ? cleanText(am[1]) : cleanText(td);
-                } else if (th === 'Director:') {
-                    vodDirector = cleanText(td);
-                } else if (th === 'Studio:') {
-                    var sm = td.match(/<span[^>]*class="description-vertical[^"]*"[^>]*>([\s\S]*?)<\/span>/i);
-                    studioName = sm ? cleanText(sm[1]) : cleanText(td);
+            var year;
+            var releaseBlock = doc.querySelector('div.details-block h2');
+            if (releaseBlock && (releaseBlock.textContent || '').indexOf('Release') !== -1) {
+                var releaseP = releaseBlock.parentNode ? releaseBlock.parentNode.querySelector('p') : null;
+                if (releaseP) {
+                    var ym = (releaseP.textContent || '').match(/(\d{4})/);
+                    if (ym) year = parseInt(ym[1]);
                 }
             }
 
-            var cast = [];
-            if (actressName) cast.push(new Actor({ name: actressName }));
+            var actressName = '';
+            var director = '';
+            var studio = '';
+            var rows = doc.querySelectorAll('table tr');
+            for (var i = 0; i < rows.length; i++) {
+                var th = rows[i].querySelector('th');
+                var td = rows[i].querySelector('td');
+                if (!th || !td) continue;
+                var label = (th.textContent || th.innerText || '').trim();
+                var val = (td.textContent || td.innerText || '').trim();
+                if (label === 'Actress:') {
+                    var span = td.querySelector('span.description-vertical');
+                    actressName = span ? (span.textContent || span.innerText || '').trim() : val;
+                } else if (label === 'Director:') {
+                    director = val;
+                } else if (label === 'Studio:') {
+                    var span2 = td.querySelector('span.description-vertical');
+                    studio = span2 ? (span2.textContent || span2.innerText || '').trim() : val;
+                }
+            }
 
-            var episodes = [new Episode({
-                name: '\u6B63\u7247',
-                url: vid,
-                season: 1,
-                episode: 1
-            })];
+            var cast = actressName ? [new Actor({ name: actressName })] : [];
 
             cb({
                 success: true,
                 data: new MultimediaItem({
-                    title: vodName.substring(0, 120),
-                    url: vid,
-                    posterUrl: vodPic,
-                    backgroundPosterUrl: vodPic || undefined,
-                    description: vodContent || undefined,
+                    title: title.substring(0, 120) || url,
+                    url: url,
+                    posterUrl: poster,
+                    backgroundPosterUrl: poster || undefined,
+                    description: desc || undefined,
                     type: 'movie',
-                    year: vodYear ? parseInt(vodYear, 10) : undefined,
+                    year: year,
                     cast: cast.length ? cast : undefined,
-                    director: vodDirector || undefined,
-                    studio: studioName || undefined,
-                    episodes: episodes
+                    director: director || undefined,
+                    studio: studio || undefined,
+                    episodes: [new Episode({
+                        name: '\u6B63\u7247',
+                        url: url,
+                        season: 1,
+                        episode: 1
+                    })]
                 })
             });
         } catch (e) {
@@ -278,48 +192,37 @@
     async function loadStreams(url, cb) {
         try {
             if (!url) return cb({ success: true, data: [] });
+            var vid = (url.match(/\/video\/([A-Z]+-\d+[A-Z]?)/i) || [])[1];
+            if (!vid) return cb({ success: true, data: [] });
 
-            var videoId = String(url || '').toUpperCase().trim();
-            var streams = [];
+            var t = new Date().getTime();
+            var sig = btoa(String(t));
+            var s = sig.length - 12;
+            sig = sig.substr(s, 10);
+            var sts = 1;
+            for (var i = 0; i < 10; i++) sts += sig.charCodeAt(i) * i * 1743;
 
-            if (isValidVideoId(videoId)) {
-                var videoInfo = await fetchVideoInfo(videoId);
-                if (videoInfo && videoInfo.url) {
-                    if (videoInfo.type === 'hls' || /\.m3u8/i.test(videoInfo.url)) {
-                        streams.push(new StreamResult({
-                            url: videoInfo.url,
-                            quality: '720p',
-                            type: 'hls',
-                            headers: { 'Referer': getHost() + '/', 'User-Agent': 'Mozilla/5.0' }
-                        }));
-                    } else {
-                        streams.push(new StreamResult({
-                            url: videoInfo.url + '=m22',
-                            quality: '720p',
-                            type: 'mp4',
-                            headers: { 'Referer': getHost() + '/', 'User-Agent': 'Mozilla/5.0' }
-                        }));
-                        streams.push(new StreamResult({
-                            url: videoInfo.url + '=m37',
-                            quality: '1080p',
-                            type: 'mp4',
-                            headers: { 'Referer': getHost() + '/', 'User-Agent': 'Mozilla/5.0' }
-                        }));
-                    }
+            var apiUrl = BASE + '/hls/get_video_info.php?id=' + encodeURIComponent(vid) + '&sig=' + sig + '&sts=' + sts;
+            var res = await http_get(apiUrl, HEADERS);
+            var body = String(res && res.body || '');
+            var jsonStr = body.split('for (;;);')[1] || body;
+            var data;
+            try { data = JSON.parse(jsonStr); } catch (_) { data = null; }
+
+            if (data && data.success && data.url) {
+                var streamUrl = decodeURIComponent(data.url);
+                var streams = [];
+                if (data.type === 'hls' || /\.m3u8/i.test(streamUrl)) {
+                    streams.push(new StreamResult({ url: streamUrl, quality: '720p', type: 'hls', headers: HEADERS }));
+                } else {
+                    streams.push(new StreamResult({ url: streamUrl + '=m22', quality: '720p', type: 'mp4', headers: HEADERS }));
+                    streams.push(new StreamResult({ url: streamUrl + '=m37', quality: '1080p', type: 'mp4', headers: HEADERS }));
                 }
+                return cb({ success: true, data: streams });
             }
 
-            var m3u8Fallback = 'https://video10.memojav.net/stream/' + videoId + '/master.m3u8';
-            if (!streams.length && /\.(m3u8|mp4|flv|mkv|ts)(\?|$)/i.test(url)) {
-                streams.push(new StreamResult({
-                    url: url,
-                    quality: '720p',
-                    type: /\.m3u8/i.test(url) ? 'hls' : 'mp4',
-                    headers: { 'Referer': getHost() + '/', 'User-Agent': 'Mozilla/5.0' }
-                }));
-            }
-
-            cb({ success: true, data: streams });
+            var fallback = 'https://video10.memojav.net/stream/' + vid + '/master.m3u8';
+            cb({ success: true, data: [new StreamResult({ url: fallback, quality: '720p', type: 'hls', headers: HEADERS })] });
         } catch (e) {
             cb({ success: false, errorCode: 'STREAM_ERROR', message: String(e && e.message || e) });
         }
