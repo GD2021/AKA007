@@ -1,5 +1,22 @@
 [
   {
+    "packageName": "com.kanav.provider",
+    "name": "Kanav",
+    "version": 1,
+    "baseUrl": "https://kanav.ad",
+    "description": "JAV video provider from Kanav",
+    "authors": [
+      "GD2021"
+    ],
+    "languages": [
+      "ja"
+    ],
+    "categories": [
+      "Movie"
+    ],
+    "url": "https://raw.githubusercontent.com/GD2021/AKA007/main/dist/com.kanav.provider.sky"
+  },
+  {
     "packageName": "com.memojav.provider",
     "name": "MemoJav",
     "version": 1,
